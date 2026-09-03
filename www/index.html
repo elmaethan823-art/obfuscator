@@ -3,13 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Repository File Browser</title>
+  <title>Luau Obfuscator</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin:0; padding:0; box-sizing:border-box; }
     body {
       background: #0d1117;
       color: #c9d1d9;
@@ -21,7 +17,7 @@
       align-items: center;
     }
     .container {
-      max-width: 900px;
+      max-width: 1000px;
       width: 100%;
       background: #161b22;
       border-radius: 16px;
@@ -47,125 +43,492 @@
       color: #8b949e;
       margin-bottom: 1.5rem;
     }
-    .file-grid {
+    /* Tabs */
+    .tabs {
       display: flex;
-      flex-direction: column;
       gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 0.5rem;
     }
-    .file-item {
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: #8b949e;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      color: #f0f6fc;
+      background: #21262d;
+    }
+    .tab-btn.active {
+      color: #f0f6fc;
+      background: #21262d;
+      border-bottom: 2px solid #58a6ff;
+    }
+    .tab-panel {
+      display: none;
+      margin-top: 1rem;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+    /* File upload area */
+    .file-upload-area {
+      border: 2px dashed #30363d;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      transition: border 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+    .file-upload-area:hover {
+      border-color: #58a6ff;
+      background: #0d1117;
+    }
+    .file-upload-area.dragover {
+      border-color: #238636;
+      background: #0d1117;
+    }
+    .file-upload-area input[type="file"] {
+      display: none;
+    }
+    .file-upload-area .file-info {
+      color: #8b949e;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+    .file-upload-area .file-info strong {
+      color: #f0f6fc;
+    }
+    /* Options grid (unchanged) */
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem 1.5rem;
+      background: #0d1117;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      margin: 1.5rem 0;
+    }
+    .options-grid label {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.6rem 1rem;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+    .options-grid label:hover { color: #f0f6fc; }
+    .options-grid input[type="checkbox"] {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #30363d;
+      border-radius: 4px;
       background: #0d1117;
-      border-radius: 8px;
-      border: 1px solid #30363d;
-      transition: background 0.2s;
+      transition: all 0.15s;
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
     }
-    .file-item:hover {
-      background: #1c2128;
+    .options-grid input[type="checkbox"]:checked {
+      background: #238636;
+      border-color: #238636;
     }
-    .file-item a {
-      color: #58a6ff;
-      text-decoration: none;
+    .options-grid input[type="checkbox"]:checked::after {
+      content: "✓";
+      color: #fff;
+      font-size: 14px;
+      position: absolute;
+      top: -2px;
+      left: 2px;
+    }
+    .options-grid input[type="checkbox"]:focus-visible {
+      outline: 2px solid #238636;
+      outline-offset: 2px;
+    }
+    /* Textarea */
+    textarea {
+      width: 100%;
       font-family: 'JetBrains Mono', 'Fira Code', monospace;
       font-size: 0.9rem;
-      word-break: break-all;
+      background: #0d1117;
+      color: #e6edf3;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1rem;
+      resize: vertical;
+      min-height: 200px;
+      transition: border 0.2s;
     }
-    .file-item a:hover {
-      text-decoration: underline;
+    textarea:focus {
+      outline: none;
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.2);
     }
-    .file-icon {
-      font-size: 1.2rem;
-      flex-shrink: 0;
+    textarea::placeholder { color: #484f58; }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 1.25rem 0 1rem;
     }
-    .file-path {
+    .btn {
+      padding: 0.6rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .btn-primary {
+      background: #238636;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #2ea043;
+      transform: translateY(-1px);
+    }
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-secondary {
+      background: #21262d;
+      color: #c9d1d9;
+    }
+    .btn-secondary:hover { background: #30363d; }
+    #result-container {
+      margin-top: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      overflow: hidden;
+      display: none;
+    }
+    #result-container.visible { display: block; }
+    #result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 1rem;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+    }
+    #result-header span {
+      font-weight: 500;
       color: #8b949e;
+    }
+    #result-header .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    #result-header .actions .btn {
+      padding: 0.2rem 0.8rem;
       font-size: 0.8rem;
-      margin-left: auto;
-      flex-shrink: 0;
     }
-    .footer {
-      margin-top: 2rem;
-      padding-top: 1rem;
-      border-top: 1px solid #30363d;
+    #result-output {
+      padding: 1rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      max-height: 500px;
+      overflow-y: auto;
+      background: #0d1117;
+    }
+    .spinner {
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
       color: #8b949e;
-      font-size: 0.9rem;
-      text-align: center;
     }
-    .footer a {
-      color: #58a6ff;
-      text-decoration: none;
+    .spinner.active { display: flex; }
+    .spinner::after {
+      content: "";
+      width: 18px;
+      height: 18px;
+      border: 2px solid #30363d;
+      border-top: 2px solid #58a6ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
     }
-    .footer a:hover {
-      text-decoration: underline;
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 640px) {
       body { padding: 1rem; }
       .container { padding: 1rem; }
+      .options-grid { grid-template-columns: 1fr 1fr; }
+      .button-row { flex-direction: column; }
+      .btn { justify-content: center; }
     }
+    @media (max-width: 480px) { .options-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>
-      📂 Repository Files
-      <span>obfuscator</span>
-    </h1>
-    <p class="subtitle">
-      All files from
-      <a href="https://github.com/elmaethan823-art/obfuscator" style="color:#58a6ff;text-decoration:none;">
-        elmaethan823-art/obfuscator
-      </a>
-    </p>
+<div class="container">
+  <h1>🔒 Luau Obfuscator <span>v2</span></h1>
+  <p class="subtitle">Paste code or upload a file, choose options, and get obfuscated Luau.</p>
 
-    <div class="file-grid">
-      <!-- src/ folder -->
-      <div class="file-item">
-        <span class="file-icon">📁</span>
-        <a href="https://github.com/elmaethan823-art/obfuscator/tree/main/src">src/</a>
-        <span class="file-path">folder</span>
-      </div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="paste">📝 Paste Code</button>
+    <button class="tab-btn" data-tab="file">📂 Upload File</button>
+  </div>
 
-      <!-- Files inside src/ -->
-      <div class="file-item" style="margin-left: 1.5rem;">
-        <span class="file-icon">📄</span>
-        <a href="https://raw.githubusercontent.com/elmaethan823-art/obfuscator/main/src/httplib.h">httplib.h</a>
-        <span class="file-path">C++ header</span>
-      </div>
-      <div class="file-item" style="margin-left: 1.5rem;">
-        <span class="file-icon">📄</span>
-        <a href="https://raw.githubusercontent.com/elmaethan823-art/obfuscator/main/src/main.cpp">main.cpp</a>
-        <span class="file-path">C++ source</span>
-      </div>
+  <!-- Paste panel -->
+  <div id="paste-panel" class="tab-panel active">
+    <textarea id="inputCode" name="code" placeholder="-- Your Luau code here ..." spellcheck="false"></textarea>
+  </div>
 
-      <!-- www/ folder -->
-      <div class="file-item">
-        <span class="file-icon">📁</span>
-        <a href="https://github.com/elmaethan823-art/obfuscator/tree/main/www">www/</a>
-        <span class="file-path">folder</span>
-      </div>
-
-      <!-- Files inside www/ -->
-      <div class="file-item" style="margin-left: 1.5rem;">
-        <span class="file-icon">📄</span>
-        <a href="https://raw.githubusercontent.com/elmaethan823-art/obfuscator/main/www/index.html">index.html</a>
-        <span class="file-path">HTML</span>
-      </div>
-
-      <!-- Root files -->
-      <div class="file-item">
-        <span class="file-icon">📄</span>
-        <a href="https://raw.githubusercontent.com/elmaethan823-art/obfuscator/main/README.md">README.md</a>
-        <span class="file-path">Markdown</span>
-      </div>
-    </div>
-
-    <div class="footer">
-      <a href="https://github.com/elmaethan823-art/obfuscator">View on GitHub</a>
-      &nbsp;·&nbsp;
-      <a href="https://github.com/elmaethan823-art/obfuscator/archive/refs/heads/main.zip">Download ZIP</a>
+  <!-- File panel -->
+  <div id="file-panel" class="tab-panel">
+    <div class="file-upload-area" id="fileDropArea">
+      <p>📤 Drag &amp; drop your <strong>.lua</strong> file here</p>
+      <p style="color:#8b949e; font-size:0.9rem; margin-top:0.5rem;">or click to browse</p>
+      <input type="file" id="fileInput" accept=".lua,.txt,.luau" />
+      <div class="file-info" id="fileInfo">No file chosen</div>
     </div>
   </div>
+
+  <!-- Options (common) -->
+  <form id="obfuscateForm" action="/obfuscate" method="post">
+    <div class="options-grid">
+      <label><input type="checkbox" name="rename" checked> Rename identifiers</label>
+      <label><input type="checkbox" name="encrypt" checked> Encrypt strings</label>
+      <label><input type="checkbox" name="flatten" checked> Flatten control flow</label>
+      <label><input type="checkbox" name="obfuscateNumbers" checked> Obfuscate numbers</label>
+      <label><input type="checkbox" name="deadCode" checked> Insert dead code</label>
+      <label><input type="checkbox" name="antiDebug"> Add anti‑debug stubs</label>
+    </div>
+
+    <div class="button-row">
+      <button type="submit" class="btn btn-primary" id="obfuscateBtn"><span>⚡</span> Obfuscate</button>
+      <button type="button" class="btn btn-secondary" id="clearBtn"><span>🗑️</span> Clear</button>
+      <button type="button" class="btn btn-secondary" id="loadSampleBtn"><span>📄</span> Load sample</button>
+      <div class="spinner" id="loadingSpinner">Processing…</div>
+    </div>
+  </form>
+
+  <!-- Result -->
+  <div id="result-container">
+    <div id="result-header">
+      <span>📋 Obfuscated output</span>
+      <div class="actions">
+        <button class="btn btn-secondary" id="copyBtn">📝 Copy</button>
+        <button class="btn btn-secondary" id="downloadBtn">⬇️ Download</button>
+      </div>
+    </div>
+    <div id="result-output"></div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // DOM refs
+    const form = document.getElementById('obfuscateForm');
+    const inputCode = document.getElementById('inputCode');
+    const fileInput = document.getElementById('fileInput');
+    const fileDropArea = document.getElementById('fileDropArea');
+    const fileInfo = document.getElementById('fileInfo');
+    const resultContainer = document.getElementById('result-container');
+    const resultOutput = document.getElementById('result-output');
+    const obfuscateBtn = document.getElementById('obfuscateBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const clearBtn = document.getElementById('clearBtn');
+    const loadSampleBtn = document.getElementById('loadSampleBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+
+    // Sample code
+    const SAMPLE_CODE = `-- Simple Luau program
+local function greet(name)
+    if name == "Luau" then
+        print("Hello, Luau!")
+    else
+        print("Hello, " .. name .. "!")
+    end
+end
+
+local function factorial(n)
+    if n <= 1 then
+        return 1
+    end
+    return n * factorial(n - 1)
+end
+
+for i = 1, 5 do
+    local msg = "Factorial of " .. i .. " is " .. factorial(i)
+    print(msg)
+end
+
+local data = {
+    name = "Luau",
+    version = "0.6",
+    features = { "types", "syntax", "performance" }
+}
+
+print("Obfuscate me!")`;
+
+    // ---- Tab switching ----
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.dataset.tab;
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(target + '-panel').classList.add('active');
+      });
+    });
+
+    // ---- File handling ----
+    function loadFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        inputCode.value = e.target.result;
+        fileInfo.innerHTML = `✅ <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB) loaded.`;
+        // Switch to paste tab to show the code
+        tabBtns.forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-tab="paste"]').classList.add('active');
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('paste-panel').classList.add('active');
+        // Auto-submit? We let user click obfuscate.
+      };
+      reader.onerror = () => {
+        fileInfo.innerHTML = '❌ Failed to read file.';
+      };
+      reader.readAsText(file);
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      if (fileInput.files.length > 0) {
+        loadFile(fileInput.files[0]);
+      }
+    });
+
+    // Drag and drop
+    fileDropArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      fileDropArea.classList.add('dragover');
+    });
+    fileDropArea.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      fileDropArea.classList.remove('dragover');
+    });
+    fileDropArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      fileDropArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+        loadFile(files[0]);
+      }
+    });
+    fileDropArea.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    // ---- Form submission ----
+    function showResult(text) {
+      resultOutput.textContent = text;
+      resultContainer.classList.add('visible');
+    }
+    function hideResult() {
+      resultContainer.classList.remove('visible');
+    }
+    function setLoading(loading) {
+      obfuscateBtn.disabled = loading;
+      loadingSpinner.classList.toggle('active', loading);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = inputCode.value.trim();
+      if (!code) {
+        alert('Please enter some Luau code or upload a file.');
+        return;
+      }
+      const formData = new FormData(form);
+      // The textarea is named "code", so it's already included.
+      setLoading(true);
+      hideResult();
+      try {
+        const response = await fetch('/obfuscate', { method: 'POST', body: formData });
+        if (!response.ok) throw new Error('Server error: ' + response.status);
+        const result = await response.text();
+        showResult(result);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // ---- Utility buttons ----
+    clearBtn.addEventListener('click', () => {
+      inputCode.value = '';
+      fileInput.value = '';
+      fileInfo.innerHTML = 'No file chosen';
+      hideResult();
+    });
+
+    loadSampleBtn.addEventListener('click', () => {
+      inputCode.value = SAMPLE_CODE;
+      // Switch to paste tab
+      tabBtns.forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-tab="paste"]').classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('paste-panel').classList.add('active');
+      hideResult();
+      inputCode.focus();
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      const text = resultOutput.textContent;
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = copyBtn.textContent;
+        copyBtn.textContent = '✅ Copied!';
+        setTimeout(() => copyBtn.textContent = orig, 2000);
+      } catch {
+        alert('Could not copy.');
+      }
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const text = resultOutput.textContent;
+      if (!text) return;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'obfuscated.lua';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Ctrl+Enter submit
+    inputCode.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') form.dispatchEvent(new Event('submit'));
+    });
+
+    // Focus
+    inputCode.focus();
+  })();
+</script>
 </body>
 </html>
