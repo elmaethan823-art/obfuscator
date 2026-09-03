@@ -75,10 +75,8 @@
       display: none;
       margin-top: 1rem;
     }
-    .tab-panel.active {
-      display: block;
-    }
-    /* File upload area */
+    .tab-panel.active { display: block; }
+    /* File upload */
     .file-upload-area {
       border: 2px dashed #30363d;
       border-radius: 12px;
@@ -95,18 +93,14 @@
       border-color: #238636;
       background: #0d1117;
     }
-    .file-upload-area input[type="file"] {
-      display: none;
-    }
+    .file-upload-area input[type="file"] { display: none; }
     .file-upload-area .file-info {
       color: #8b949e;
       font-size: 0.9rem;
       margin-top: 0.5rem;
     }
-    .file-upload-area .file-info strong {
-      color: #f0f6fc;
-    }
-    /* Options grid (unchanged) */
+    .file-upload-area .file-info strong { color: #f0f6fc; }
+    /* Options */
     .options-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -209,6 +203,7 @@
       color: #c9d1d9;
     }
     .btn-secondary:hover { background: #30363d; }
+    /* Result container */
     #result-container {
       margin-top: 1.5rem;
       border-radius: 8px;
@@ -247,6 +242,32 @@
       max-height: 500px;
       overflow-y: auto;
       background: #0d1117;
+    }
+    /* Applied passes badges */
+    .applied-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #0d1117;
+      border-bottom: 1px solid #30363d;
+    }
+    .badge {
+      background: #21262d;
+      color: #c9d1d9;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid #30363d;
+    }
+    .badge.enabled {
+      background: #238636;
+      color: #fff;
+      border-color: #238636;
+    }
+    .badge.disabled {
+      opacity: 0.4;
     }
     .spinner {
       display: none;
@@ -301,7 +322,7 @@
     </div>
   </div>
 
-  <!-- Options (common) -->
+  <!-- Options -->
   <form id="obfuscateForm" action="/obfuscate" method="post">
     <div class="options-grid">
       <label><input type="checkbox" name="rename" checked> Rename identifiers</label>
@@ -329,13 +350,16 @@
         <button class="btn btn-secondary" id="downloadBtn">⬇️ Download</button>
       </div>
     </div>
+    <!-- Badges: show which passes were applied -->
+    <div class="applied-badges" id="badgeContainer">
+      <!-- filled by JavaScript -->
+    </div>
     <div id="result-output"></div>
   </div>
 </div>
 
 <script>
   (function() {
-    // DOM refs
     const form = document.getElementById('obfuscateForm');
     const inputCode = document.getElementById('inputCode');
     const fileInput = document.getElementById('fileInput');
@@ -343,6 +367,7 @@
     const fileInfo = document.getElementById('fileInfo');
     const resultContainer = document.getElementById('result-container');
     const resultOutput = document.getElementById('result-output');
+    const badgeContainer = document.getElementById('badgeContainer');
     const obfuscateBtn = document.getElementById('obfuscateBtn');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const clearBtn = document.getElementById('clearBtn');
@@ -351,7 +376,6 @@
     const downloadBtn = document.getElementById('downloadBtn');
     const tabBtns = document.querySelectorAll('.tab-btn');
 
-    // Sample code
     const SAMPLE_CODE = `-- Simple Luau program
 local function greet(name)
     if name == "Luau" then
@@ -398,12 +422,11 @@ print("Obfuscate me!")`;
       reader.onload = (e) => {
         inputCode.value = e.target.result;
         fileInfo.innerHTML = `✅ <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB) loaded.`;
-        // Switch to paste tab to show the code
+        // Switch to paste tab
         tabBtns.forEach(b => b.classList.remove('active'));
         document.querySelector('[data-tab="paste"]').classList.add('active');
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         document.getElementById('paste-panel').classList.add('active');
-        // Auto-submit? We let user click obfuscate.
       };
       reader.onerror = () => {
         fileInfo.innerHTML = '❌ Failed to read file.';
@@ -412,12 +435,9 @@ print("Obfuscate me!")`;
     }
 
     fileInput.addEventListener('change', (e) => {
-      if (fileInput.files.length > 0) {
-        loadFile(fileInput.files[0]);
-      }
+      if (fileInput.files.length > 0) loadFile(fileInput.files[0]);
     });
 
-    // Drag and drop
     fileDropArea.addEventListener('dragover', (e) => {
       e.preventDefault();
       fileDropArea.classList.add('dragover');
@@ -435,23 +455,40 @@ print("Obfuscate me!")`;
         loadFile(files[0]);
       }
     });
-    fileDropArea.addEventListener('click', () => {
-      fileInput.click();
-    });
+    fileDropArea.addEventListener('click', () => fileInput.click());
 
-    // ---- Form submission ----
-    function showResult(text) {
+    // ---- Show result with badges ----
+    function showResult(text, options) {
       resultOutput.textContent = text;
+      // Build badges
+      badgeContainer.innerHTML = '';
+      const optionNames = {
+        rename: 'Rename identifiers',
+        encrypt: 'Encrypt strings',
+        flatten: 'Flatten control flow',
+        obfuscateNumbers: 'Obfuscate numbers',
+        deadCode: 'Insert dead code',
+        antiDebug: 'Anti‑debug stubs'
+      };
+      for (const [key, label] of Object.entries(optionNames)) {
+        const badge = document.createElement('span');
+        badge.className = 'badge ' + (options[key] ? 'enabled' : 'disabled');
+        badge.textContent = options[key] ? '✅ ' + label : '❌ ' + label;
+        badgeContainer.appendChild(badge);
+      }
       resultContainer.classList.add('visible');
     }
+
     function hideResult() {
       resultContainer.classList.remove('visible');
     }
+
     function setLoading(loading) {
       obfuscateBtn.disabled = loading;
       loadingSpinner.classList.toggle('active', loading);
     }
 
+    // ---- Form submission ----
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const code = inputCode.value.trim();
@@ -459,15 +496,26 @@ print("Obfuscate me!")`;
         alert('Please enter some Luau code or upload a file.');
         return;
       }
+
+      // Gather current option states for display
+      const options = {
+        rename: form.querySelector('[name="rename"]').checked,
+        encrypt: form.querySelector('[name="encrypt"]').checked,
+        flatten: form.querySelector('[name="flatten"]').checked,
+        obfuscateNumbers: form.querySelector('[name="obfuscateNumbers"]').checked,
+        deadCode: form.querySelector('[name="deadCode"]').checked,
+        antiDebug: form.querySelector('[name="antiDebug"]').checked
+      };
+
       const formData = new FormData(form);
-      // The textarea is named "code", so it's already included.
       setLoading(true);
       hideResult();
+
       try {
         const response = await fetch('/obfuscate', { method: 'POST', body: formData });
         if (!response.ok) throw new Error('Server error: ' + response.status);
         const result = await response.text();
-        showResult(result);
+        showResult(result, options);
       } catch (err) {
         alert('Error: ' + err.message);
       } finally {
@@ -485,7 +533,6 @@ print("Obfuscate me!")`;
 
     loadSampleBtn.addEventListener('click', () => {
       inputCode.value = SAMPLE_CODE;
-      // Switch to paste tab
       tabBtns.forEach(b => b.classList.remove('active'));
       document.querySelector('[data-tab="paste"]').classList.add('active');
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -521,12 +568,10 @@ print("Obfuscate me!")`;
       URL.revokeObjectURL(url);
     });
 
-    // Ctrl+Enter submit
     inputCode.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key === 'Enter') form.dispatchEvent(new Event('submit'));
     });
 
-    // Focus
     inputCode.focus();
   })();
 </script>
